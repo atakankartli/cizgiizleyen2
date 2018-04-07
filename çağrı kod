@@ -1,0 +1,164 @@
+#define kapi_sens A5
+
+#define sensor1 7
+#define sensor2 6
+#define sensor3 5
+#define sensor4 4
+#define sensor5 3
+#define sensor6 2
+#define sensor7 A1
+#define sensor8 A0
+
+#define sol_ileri 8
+#define sol_geri 9
+#define sol_pwm 11
+
+#define sag_ileri 13
+#define sag_geri 12
+#define sag_pwm 10
+
+float const       P_K=7;
+float const       I_K=0;
+float const       D_K=30;
+
+float             error=0,error_lst=0,error_dif=0;
+float             p=0,i=0,d=0;
+float             t=0;
+
+float             pwm=0;
+float             toplam=0;
+float             yer=45,yer_son=45;
+int               sayac=0;
+int               siyah=0;
+int               beyaz=0;
+float             HIZ_MAX=130;
+float             HIZ=20;
+int               izin=0;
+int               cizgi=0;
+int               asama=1;
+int               kapi=1;
+unsigned long long zaman=0LL;
+
+void sensor_oku();
+void pid_kontrol();
+
+void setup() {
+  // put your setup code here, to run once:
+  pinMode(sol_ileri, OUTPUT);
+  pinMode(sol_geri, OUTPUT);
+  pinMode(sol_pwm, OUTPUT);
+  pinMode(sag_ileri, OUTPUT);
+  pinMode(sag_geri, OUTPUT);
+  pinMode(sag_pwm, OUTPUT);
+
+  pinMode(kapi_sens, INPUT);
+  pinMode(sensor1, INPUT);
+  pinMode(sensor2, INPUT);
+  pinMode(sensor3, INPUT);
+  pinMode(sensor4, INPUT);
+  pinMode(sensor5, INPUT);
+  pinMode(sensor6, INPUT);
+  pinMode(sensor7, INPUT);
+  pinMode(sensor8, INPUT);
+  delay(50);
+  
+  digitalWrite(sol_ileri, HIGH);
+  digitalWrite(sol_geri, LOW);
+  analogWrite(sol_pwm, 0);
+  
+  digitalWrite(sag_ileri, HIGH);
+  digitalWrite(sag_geri, LOW);
+  analogWrite(sag_pwm, 0);
+  delay(100);
+
+}
+
+void loop() {
+  zaman++;
+  sensor_oku();
+  pid_kontrol();
+  
+}
+void sensor_oku()
+{
+   toplam=0;sayac=0;beyaz=0;siyah=0;
+   if ( digitalRead(sensor1)==1 )  { toplam=toplam+10 ; sayac=sayac+1 ;beyaz++; }
+   if ( digitalRead(sensor2)==1 )  { toplam=toplam+20 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor3)==1 )   { toplam=toplam+30 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor4)==1 )  { toplam=toplam+40 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor5)==1 )  { toplam=toplam+50 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor6)==1 )  { toplam=toplam+60 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor7)==1 )  { toplam=toplam+70 ; sayac=sayac+1 ;beyaz++;  }
+   if ( digitalRead(sensor8)==1 )  { toplam=toplam+80 ; sayac=sayac+1 ;beyaz++;  }
+
+   if(digitalRead(kapi_sens)==LOW){kapi=0;}
+   else{kapi=1;}
+   
+   if (beyaz > siyah) {toplam=360-toplam; sayac=8-sayac;}
+
+   if(beyaz>=6){izin=1;}
+   if(beyaz<=2 && izin==1){cizgi++; izin=0;}
+   
+   yer=toplam/sayac;
+   if ( yer == 0 ) {yer=yer_son;}  
+   yer_son=yer;
+  
+}
+
+void pid_kontrol()
+{ 
+  if(HIZ < HIZ_MAX ) {HIZ=HIZ+1; pwm=HIZ;}
+  
+  error = 45 - yer;
+  error_dif = error - error_lst;
+  error_lst = error;
+  
+  p=P_K*error;
+  i=i+(I_K*error_dif);
+  d=D_K*error_dif;
+  t=p+i+d;
+  
+ if(t<0) {t=0;}
+  
+  if ( error>0) 
+  {
+     //sol motor
+    digitalWrite(sol_ileri, HIGH);
+    digitalWrite(sol_geri, LOW);
+
+    analogWrite(sol_pwm, pwm);
+    //sag motor
+    digitalWrite(sag_ileri, HIGH);
+    digitalWrite(sag_geri, LOW);
+
+    analogWrite(sag_pwm, (pwm-t));
+  }   
+  
+  if ( error<0) 
+  {
+      //sol motor
+    digitalWrite(sol_ileri, HIGH);
+    digitalWrite(sol_geri, LOW);
+
+    analogWrite(sol_pwm, (pwm+t));
+    //sag motor
+    digitalWrite(sag_ileri, HIGH);
+    digitalWrite(sag_geri, LOW);
+
+    analogWrite(sag_pwm, pwm);
+  }
+  
+  if ( error==0)
+  {
+      //sol motor
+    digitalWrite(sol_ileri, HIGH);
+    digitalWrite(sol_geri, LOW);
+
+    analogWrite(sol_pwm, pwm);
+    //sag motor
+    digitalWrite(sag_ileri, HIGH);
+    digitalWrite(sag_geri, LOW);
+  
+    analogWrite(sag_pwm, pwm);
+  }
+}
